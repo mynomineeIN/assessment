@@ -33,7 +33,7 @@ fun AuthenticatedLandingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("RemindMe Dashboard") },
+                title = { Text("Notify Dashboard") },
                 actions = {
                     TextButton(
                         onClick = handleLogout,
@@ -75,7 +75,7 @@ fun AuthenticatedLandingScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Welcome to RemindMe!",
+                text = "Welcome to Notify!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )

@@ -97,7 +97,7 @@ fun AddEditReminderScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (reminderId != null && reminderId > 0L) "Edit Reminder" else "Add Reminder") },
+                title = { Text(if (reminderId != null && reminderId > 0L) "Edit alarm" else "Create alarm") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -130,7 +130,7 @@ fun AddEditReminderScreen(
             OutlinedTextField(
                 value = viewModel.title,
                 onValueChange = { viewModel.title = it },
-                label = { Text("Reminder Title *") },
+                label = { Text("Alarm name *") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -251,7 +251,7 @@ fun AddEditReminderScreen(
                 if (viewModel.isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Save Reminder")
+                    Text("Save alarm")
                 }
             }
         }

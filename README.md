@@ -1,4 +1,4 @@
-# Android Reminder Application
+# Notify
 
 A fully featured, native Android reminder application built with **Jetpack Compose**, **Material 3**, **Room Database**, **Firebase Authentication**, **AlarmManager**, and **Clean Architecture**.
 
@@ -7,12 +7,12 @@ A fully featured, native Android reminder application built with **Jetpack Compo
 ## Features
 
 - **Authentication:** Mobile OTP verification and Google Sign-In via Credential Manager.
-- **Home Screen Dashboard:** Welcome greeting, categorized reminders (Today, Upcoming, Completed), and quick management actions.
+- **Alarm Dashboard:** A calm, interactive schedule with next-alarm highlights, active/completed counts, Today/Upcoming/Paused filters, and quick edit, pause, and delete actions.
 - **Reminder CRUD:** Create, read, update, and delete reminders with mandatory/optional fields (Name, Description, Start Date, Time, Repeat Frequency, Repeat Until, Alarm Sound, Snooze).
 - **Recurrence Engine:** Supports Daily, Weekly, Monthly, and Yearly recurrences with custom repeat days and auto-scheduling of the next occurrence.
 - **Alarm & Notification Engine:** Alarm-style alerts, exact alarm scheduling via `AlarmManager`, notification delivery, and interactive Snooze/Dismiss actions.
 - **Device Restart Recovery:** Automatic alarm restoration on device boot via `BootReceiver`.
-- **Offline Functionality:** Complete offline CRUD and local notification triggers powered by Room SQLite database.
+- **Offline Functionality:** Complete offline CRUD and local notification triggers powered by Room SQLite database. Alarm data is stored on the device; shared HR/team scheduling is not included.
 - **Permissions Handling:** Notification and exact alarm permission checks and recovery flows.
 
 ---

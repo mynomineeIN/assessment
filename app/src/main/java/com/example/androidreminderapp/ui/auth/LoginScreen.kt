@@ -58,7 +58,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // RemindMe Branding Header
+            // Notify branding header
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Logo",
@@ -67,7 +67,7 @@ fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "RemindMe",
+                text = "Notify",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -150,7 +150,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "By continuing, you agree to RemindMe's Terms of Service and Privacy Policy.",
+                        text = "By continuing, you agree to Notify's Terms of Service and Privacy Policy.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = TextAlign.Center
@@ -379,7 +379,7 @@ fun LoginScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Navigating to RemindMe Dashboard...",
+                        text = "Navigating to Notify Dashboard...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

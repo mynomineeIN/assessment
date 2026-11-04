@@ -20,10 +20,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.androidreminderapp.ui.auth.AuthenticatedLandingScreen
 import com.example.androidreminderapp.ui.auth.AuthSessionState
 import com.example.androidreminderapp.ui.auth.AuthViewModel
 import com.example.androidreminderapp.ui.auth.LoginScreen
+import com.example.androidreminderapp.ui.home.HomeScreen
+import com.example.androidreminderapp.ui.home.HomeViewModel
 import com.example.androidreminderapp.ui.reminder.AddEditReminderScreen
 import com.example.androidreminderapp.ui.theme.AndroidReminderAppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -92,7 +93,14 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 composable("home") {
-                                    AuthenticatedLandingScreen(
+                                    HomeScreen(
+                                        viewModel = hiltViewModel<HomeViewModel>(),
+                                        onAddReminder = {
+                                            navController.navigate("add_reminder")
+                                        },
+                                        onEditReminder = { reminderId ->
+                                            navController.navigate("add_reminder/$reminderId")
+                                        },
                                         onLogout = {
                                             viewModel.signOut()
                                         }

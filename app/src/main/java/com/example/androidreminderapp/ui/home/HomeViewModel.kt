@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidreminderapp.domain.model.Reminder
-import com.example.androidreminderapp.domain.repository.AuthRepository
 import com.example.androidreminderapp.domain.repository.ReminderRepository
 import com.example.androidreminderapp.service.AlarmScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,8 +15,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val reminderRepository: ReminderRepository,
-    private val authRepository: AuthRepository
+    private val reminderRepository: ReminderRepository
 ) : ViewModel() {
 
     val reminders: StateFlow<List<Reminder>> = reminderRepository.getAllReminders()
@@ -44,9 +42,5 @@ class HomeViewModel @Inject constructor(
             AlarmScheduler.cancelAlarm(context, reminder.id)
             reminderRepository.deleteReminder(reminder)
         }
-    }
-
-    fun logout() {
-        authRepository.signOut()
     }
 }
