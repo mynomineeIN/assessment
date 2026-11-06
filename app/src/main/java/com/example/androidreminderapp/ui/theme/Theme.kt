@@ -1,6 +1,5 @@
 package com.example.androidreminderapp.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -11,37 +10,41 @@ import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
     primary = ForestDark,
-    onPrimary = Color(0xFF17372E),
-    primaryContainer = Color(0xFF294B40),
-    onPrimaryContainer = Color(0xFFD3EBDD),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF641B5C),
+    onPrimaryContainer = Color(0xFFFFD6F8),
     secondary = SageDark,
-    onSecondary = Color(0xFF243A32),
-    secondaryContainer = Color(0xFF334B41),
-    onSecondaryContainer = Color(0xFFD1E5D9),
+    onSecondary = Color(0xFF34243A),
+    secondaryContainer = Color(0xFF3B2942),
+    onSecondaryContainer = Color(0xFFF4DDF2),
     tertiary = AmberDark,
-    onTertiary = Color(0xFF48290A),
+    onTertiary = Color(0xFF35204B),
     background = PageDark,
-    onBackground = Color(0xFFE0E9E3),
+    onBackground = Color(0xFFF7EDF8),
     surface = SurfaceDark,
-    onSurface = Color(0xFFE0E9E3),
-    surfaceVariant = Color(0xFF293630),
-    onSurfaceVariant = Color(0xFFBECBC2),
-    outline = Color(0xFF87968D)
+    onSurface = Color(0xFFF7EDF8),
+    surfaceVariant = Color(0xFF302438),
+    onSurfaceVariant = Color(0xFFC9B9CB),
+    outline = Color(0xFF927D97),
+    outlineVariant = OutlineSoft,
+    error = Color(0xFFFFB4AB),
+    errorContainer = Color(0xFF5C2428),
+    onErrorContainer = Color(0xFFFFDAD6)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Forest,
+    primary = Color(0xFFB91AA4),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD9EDE4),
-    onPrimaryContainer = Color(0xFF183D32),
-    secondary = Sage,
+    primaryContainer = Color(0xFFF9D7F2),
+    onPrimaryContainer = Color(0xFF520B48),
+    secondary = Color(0xFF69536C),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE1EBE5),
-    onSecondaryContainer = Color(0xFF2D463B),
-    tertiary = Amber,
+    secondaryContainer = Color(0xFFF0DDF1),
+    onSecondaryContainer = Color(0xFF34243A),
+    tertiary = Color(0xFF695083),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFE9D1),
-    onTertiaryContainer = Color(0xFF61380F),
+    tertiaryContainer = Color(0xFFEEDCFF),
+    onTertiaryContainer = Color(0xFF35204B),
     background = Page,
     onBackground = Color(0xFF1E2924),
     surface = Color.White,
@@ -60,7 +63,7 @@ private val AppShapes = Shapes(
 
 @Composable
 fun AndroidReminderAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(

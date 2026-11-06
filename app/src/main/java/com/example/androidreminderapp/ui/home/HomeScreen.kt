@@ -1,5 +1,6 @@
 package com.example.androidreminderapp.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -18,7 +19,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,6 +31,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.random.Random
 
 private enum class AlarmFilter(val label: String) {
     ALL("All alarms"),
@@ -78,23 +83,20 @@ fun HomeScreen(
         AlarmFilter.UPCOMING -> upcomingReminders
         AlarmFilter.PAUSED -> pausedReminders
     }
-    val dateFormat = remember { SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()) }
-    val timeFormat = remember { SimpleDateFormat("h:mm", Locale.getDefault()) }
-    val periodFormat = remember { SimpleDateFormat("a", Locale.getDefault()) }
 
     LaunchedEffect(viewModel) {
         viewModel.synchronizeCloudReminders(context)
     }
 
-    if (reminderToDelete != null) {
+    reminderToDelete?.let { reminder ->
         AlertDialog(
             onDismissRequest = { reminderToDelete = null },
             title = { Text("Delete this alarm?") },
-            text = { Text("“${reminderToDelete?.title}” will be removed from this device.") },
+            text = { Text("“${reminder.title}” will be removed from this device.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        reminderToDelete?.let { viewModel.deleteReminder(context, it) }
+                        viewModel.deleteReminder(context, reminder)
                         reminderToDelete = null
                     }
                 ) {
@@ -110,7 +112,7 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddReminder,
@@ -121,157 +123,139 @@ fun HomeScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 104.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
+        Box(modifier = Modifier.fillMaxSize()) {
+            StarryNightBackground()
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = 14.dp,
+                    bottom = 104.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(onClick = onLogout) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = "Sign out",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Text(
-                            "NOTIFY",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Your alarms",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                            "Alarm",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                    }
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Sign out",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconButton(onClick = onAddReminder) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add alarm",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
-            }
 
-            cloudSyncError?.let { message ->
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = message,
-                                modifier = Modifier.weight(1f),
-                                color = MaterialTheme.colorScheme.onErrorContainer
+                cloudSyncError?.let { message ->
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
                             )
-                            TextButton(
-                                onClick = { viewModel.synchronizeCloudReminders(context) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Retry")
+                                Text(
+                                    text = message,
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                TextButton(
+                                    onClick = { viewModel.synchronizeCloudReminders(context) }
+                                ) {
+                                    Text("Retry")
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
+                item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(22.dp)
+                            .padding(top = 2.dp, bottom = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            dateFormat.format(Date(now)).uppercase(Locale.getDefault()),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                            fontWeight = FontWeight.SemiBold
+                        CrescentMoon(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(174.dp)
                         )
-                        Spacer(Modifier.height(10.dp))
                         Text(
-                            text = nextReminder?.let { timeFormat.format(Date(it.timeInMillis)) } ?: "All clear",
-                            style = MaterialTheme.typography.displaySmall,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            "Next alarm",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = nextReminder?.let {
+                                SimpleDateFormat("h:mm", Locale.getDefault()).format(Date(it.timeInMillis))
+                            } ?: "All clear",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = nextReminder?.let {
-                                "${periodFormat.format(Date(it.timeInMillis))}  ·  ${it.title}"
+                                "${SimpleDateFormat("a", Locale.getDefault()).format(Date(it.timeInMillis))}  ·  ${it.title}"
                             } ?: "Make a little room for what matters.",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.height(20.dp))
-                        Row(
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.10f),
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .padding(horizontal = 14.dp, vertical = 11.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp)
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                "Alarm",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(Modifier.width(9.dp))
                             Text(
                                 "${activeReminders.size} active  ·  ${todayReminders.size} today",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                        TextButton(onClick = { selectedFilter = AlarmFilter.ALL }) {
+                            Text("See all")
                         }
                     }
                 }
-            }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SummaryCard(
-                        modifier = Modifier.weight(1f),
-                        label = "Active",
-                        count = activeReminders.size,
-                        accent = MaterialTheme.colorScheme.primary
-                    )
-                    SummaryCard(
-                        modifier = Modifier.weight(1f),
-                        label = "Completed",
-                        count = reminders.count { it.isCompleted },
-                        accent = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Your schedule",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
-                    )
+                item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -294,58 +278,63 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
 
-            if (visibleReminders.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 30.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                if (visibleReminders.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                            )
                         ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(34.dp)
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                if (reminders.isEmpty()) "A little reminder goes a long way"
-                                else "Nothing on this list",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                if (reminders.isEmpty()) "Create an alarm for a check-in, a deadline, or anything worth remembering."
-                                else "Try another filter, or add a new alarm.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            if (reminders.isEmpty()) {
-                                Spacer(Modifier.height(12.dp))
-                                TextButton(onClick = onAddReminder) {
-                                    Text("Create your first alarm")
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 30.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(34.dp)
+                                )
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    if (reminders.isEmpty()) "A little reminder goes a long way"
+                                    else "Nothing on this list",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    if (reminders.isEmpty()) {
+                                        "Create an alarm for a check-in, a deadline, or anything worth remembering."
+                                    } else {
+                                        "Try another filter, or add a new alarm."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (reminders.isEmpty()) {
+                                    Spacer(Modifier.height(12.dp))
+                                    TextButton(onClick = onAddReminder) {
+                                        Text("Create your first alarm")
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } else {
-                items(visibleReminders, key = { it.id }) { reminder ->
-                    AlarmCard(
-                        reminder = reminder,
-                        onToggle = { viewModel.toggleReminderStatus(context, reminder) },
-                        onEdit = { onEditReminder(reminder.id) },
-                        onDelete = { reminderToDelete = reminder }
-                    )
+                } else {
+                    items(visibleReminders, key = { it.id }) { reminder ->
+                        AlarmCard(
+                            reminder = reminder,
+                            onToggle = { viewModel.toggleReminderStatus(context, reminder) },
+                            onEdit = { onEditReminder(reminder.id) },
+                            onDelete = { reminderToDelete = reminder }
+                        )
+                    }
                 }
             }
         }
@@ -353,26 +342,84 @@ fun HomeScreen(
 }
 
 @Composable
-private fun SummaryCard(
-    modifier: Modifier,
-    label: String,
-    count: Int,
-    accent: Color
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(3.dp))
-            Text(count.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = accent)
+private fun StarryNightBackground() {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF47084F),
+                    Color(0xFF200D2A),
+                    Color(0xFF100916),
+                    Color(0xFF0B0810)
+                )
+            )
+        )
+        val random = Random(31)
+        repeat(105) {
+            val x = random.nextFloat() * size.width
+            val y = random.nextFloat() * size.height
+            val radius = random.nextFloat() * 1.5f + 0.35f
+            drawCircle(
+                color = Color(0xFFFFE9FF).copy(alpha = random.nextFloat() * 0.48f + 0.12f),
+                radius = radius,
+                center = Offset(x, y)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CrescentMoon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val moon = Path().apply {
+            moveTo(size.width * 0.66f, size.height * 0.08f)
+            cubicTo(
+                size.width * 0.39f, size.height * 0.13f,
+                size.width * 0.31f, size.height * 0.63f,
+                size.width * 0.55f, size.height * 0.82f
+            )
+            cubicTo(
+                size.width * 0.66f, size.height * 0.91f,
+                size.width * 0.79f, size.height * 0.91f,
+                size.width * 0.90f, size.height * 0.82f
+            )
+            cubicTo(
+                size.width * 0.79f, size.height * 1.03f,
+                size.width * 0.48f, size.height * 1.02f,
+                size.width * 0.34f, size.height * 0.83f
+            )
+            cubicTo(
+                size.width * 0.15f, size.height * 0.60f,
+                size.width * 0.27f, size.height * 0.19f,
+                size.width * 0.66f, size.height * 0.08f
+            )
+            close()
+        }
+        drawPath(
+            path = moon,
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFFFFD1F5), Color(0xFFE448D1), Color(0xFFB91AA4)),
+                start = Offset(size.width * 0.25f, 0f),
+                end = Offset(size.width * 0.78f, size.height)
+            )
+        )
+        val random = Random(8)
+        repeat(7) {
+            val x = size.width * (0.12f + random.nextFloat() * 0.78f)
+            val y = size.height * (0.08f + random.nextFloat() * 0.52f)
+            val half = 2.dp.toPx()
+            drawLine(
+                Color.White.copy(alpha = 0.9f),
+                Offset(x - half, y),
+                Offset(x + half, y),
+                strokeWidth = 1.dp.toPx()
+            )
+            drawLine(
+                Color.White.copy(alpha = 0.9f),
+                Offset(x, y - half),
+                Offset(x, y + half),
+                strokeWidth = 1.dp.toPx()
+            )
         }
     }
 }
@@ -398,77 +445,52 @@ private fun AlarmCard(
             .fillMaxWidth()
             .clickable(onClick = onEdit),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+        )
     ) {
-        Column(modifier = Modifier.padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(
-                            if (reminder.isActive) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = if (reminder.isActive) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        reminder.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        dateFormat.format(Date(reminder.timeInMillis)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = reminder.isActive,
-                    onCheckedChange = { onToggle() }
-                )
-            }
-            if (!reminder.description.isNullOrBlank()) {
-                Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    reminder.description,
+                    reminder.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    dateFormat.format(Date(reminder.timeInMillis)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SuggestionChip(
-                    onClick = onEdit,
-                    label = { Text(if (reminder.isCompleted) "Completed" else repeatLabel) }
+                Text(
+                    if (reminder.isCompleted) "Completed" else repeatLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onEdit) {
-                    Text("Edit")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete ${reminder.title}",
-                        tint = MaterialTheme.colorScheme.error
+                if (!reminder.description.isNullOrBlank()) {
+                    Text(
+                        reminder.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+            Switch(
+                checked = reminder.isActive,
+                onCheckedChange = { onToggle() }
+            )
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete ${reminder.title}",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
