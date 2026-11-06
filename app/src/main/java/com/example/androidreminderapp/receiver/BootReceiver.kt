@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.androidreminderapp.domain.util.RecurrenceCalculator
+import com.google.firebase.auth.FirebaseAuth
+import com.example.androidreminderapp.data.repository.ReminderCloudStore
 import com.example.androidreminderapp.service.AlarmScheduler
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
@@ -32,7 +34,8 @@ class BootReceiver : BroadcastReceiver() {
                         ReminderDaoEntryPoint::class.java
                     )
                     val reminderDao = entryPoint.reminderDao()
-                    val activeEntities = reminderDao.getActiveReminders()
+                    val userId = entryPoint.firebaseAuth().currentUser?.uid ?: return@launch
+                    val activeEntities = reminderDao.getActiveReminders(userId)
                     val now = System.currentTimeMillis()
 
                     for (entity in activeEntities) {
@@ -65,14 +68,18 @@ class BootReceiver : BroadcastReceiver() {
                             val updated = reminder.copy(
                                 timeInMillis = trigger
                             )
-                            reminderDao.updateReminder(com.example.androidreminderapp.data.local.ReminderEntity.fromDomain(updated))
+                            val updatedEntity = com.example.androidreminderapp.data.local.ReminderEntity.fromDomain(updated)
+                            reminderDao.updateReminder(updatedEntity)
+                            entryPoint.reminderCloudStore().save(userId, updatedEntity)
                             val scheduled = AlarmScheduler.scheduleAlarm(context, updated, trigger)
                             if (!scheduled) {
                                 Log.e(TAG, "Failed to reschedule alarm for reminder ID: ${reminder.id}")
                             }
                         } else {
                             val completed = reminder.copy(isCompleted = true, isActive = false)
-                            reminderDao.updateReminder(com.example.androidreminderapp.data.local.ReminderEntity.fromDomain(completed))
+                            val completedEntity = com.example.androidreminderapp.data.local.ReminderEntity.fromDomain(completed)
+                            reminderDao.updateReminder(completedEntity)
+                            entryPoint.reminderCloudStore().save(userId, completedEntity)
                         }
                     }
                 } catch (e: Exception) {

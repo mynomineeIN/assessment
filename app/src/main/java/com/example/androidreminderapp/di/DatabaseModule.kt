@@ -34,7 +34,7 @@ abstract class DatabaseModule {
                 context,
                 ReminderDatabase::class.java,
                 ReminderDatabase.DATABASE_NAME
-            ).fallbackToDestructiveMigration().build()
+            ).addMigrations(ReminderDatabase.MIGRATION_1_2).build()
         }
 
         @Provides

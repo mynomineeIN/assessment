@@ -2,6 +2,8 @@ package com.example.androidreminderapp.domain.model
 
 data class Reminder(
     val id: Long = 0L,
+    val cloudId: String = java.util.UUID.randomUUID().toString(),
+    val userId: String = "",
     val title: String,
     val description: String? = null,
     val startDate: Long,

@@ -1,13 +1,19 @@
 package com.example.androidreminderapp.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 import com.example.androidreminderapp.domain.model.Reminder
 
-@Entity(tableName = "reminders")
+@Entity(tableName = "reminders", indices = [Index(value = ["cloudId"], unique = true)])
 data class ReminderEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
+    @ColumnInfo(defaultValue = "''")
+    val cloudId: String = java.util.UUID.randomUUID().toString(),
+    @ColumnInfo(defaultValue = "''")
+    val userId: String = "",
     val title: String,
     val description: String?,
     val startDate: Long,
@@ -23,6 +29,8 @@ data class ReminderEntity(
     fun toDomain(): Reminder {
         return Reminder(
             id = id,
+            cloudId = cloudId,
+            userId = userId,
             title = title,
             description = description,
             startDate = startDate,
@@ -41,6 +49,8 @@ data class ReminderEntity(
         fun fromDomain(reminder: Reminder): ReminderEntity {
             return ReminderEntity(
                 id = reminder.id,
+                cloudId = reminder.cloudId,
+                userId = reminder.userId,
                 title = reminder.title,
                 description = reminder.description,
                 startDate = reminder.startDate,

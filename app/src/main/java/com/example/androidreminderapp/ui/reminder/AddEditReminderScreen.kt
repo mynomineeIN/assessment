@@ -2,6 +2,7 @@ package com.example.androidreminderapp.ui.reminder
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -97,26 +98,54 @@ fun AddEditReminderScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (reminderId != null && reminderId > 0L) "Edit alarm" else "Create alarm") },
+                title = {
+                    Column {
+                        Text(if (reminderId != null && reminderId > 0L) "Edit reminder" else "New reminder")
+                        Text(
+                            "Make time for what matters",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Plan ahead, effortlessly.",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Choose a time and we’ll make sure it’s on your schedule.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             if (viewModel.errorMessage != null) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -127,20 +156,36 @@ fun AddEditReminderScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = viewModel.title,
-                onValueChange = { viewModel.title = it },
-                label = { Text("Alarm name *") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Reminder details", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(
+                        value = viewModel.title,
+                        onValueChange = { viewModel.title = it },
+                        label = { Text("Reminder name *") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
+                    )
 
-            OutlinedTextField(
-                value = viewModel.description,
-                onValueChange = { viewModel.description = it },
-                label = { Text("Description (Optional)") },
-                modifier = Modifier.fillMaxWidth()
-            )
+                    OutlinedTextField(
+                        value = viewModel.description,
+                        onValueChange = { viewModel.description = it },
+                        label = { Text("Description (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
+            }
 
             // Date and Time selectors
             Text("Date & Time", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -167,7 +212,7 @@ fun AddEditReminderScreen(
             Text("Repeat Frequency", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             val frequencies = listOf("NONE" to "None", "DAILY" to "Daily", "WEEKLY" to "Weekly", "MONTHLY" to "Monthly", "YEARLY" to "Yearly")
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 frequencies.forEach { (code, label) ->
@@ -183,7 +228,7 @@ fun AddEditReminderScreen(
                 Text("Select Weekdays", style = MaterialTheme.typography.titleSmall)
                 val days = listOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun")
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     days.forEach { (dayCode, dayLabel) ->
@@ -225,7 +270,7 @@ fun AddEditReminderScreen(
             Text("Snooze Duration", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             val snoozeOptions = listOf(5, 10, 15, 30)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 snoozeOptions.forEach { minutes ->

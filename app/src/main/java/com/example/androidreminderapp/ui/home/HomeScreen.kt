@@ -28,10 +28,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private val Ink = Color(0xFF1F3037)
-private val Mint = Color(0xFFBFE8D8)
-private val Canvas = Color(0xFFF5F7F6)
-
 private enum class AlarmFilter(val label: String) {
     ALL("All alarms"),
     TODAY("Today"),
@@ -48,6 +44,7 @@ fun HomeScreen(
     onLogout: () -> Unit
 ) {
     val reminders by viewModel.reminders.collectAsState()
+    val cloudSyncError by viewModel.cloudSyncError.collectAsState()
     val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf(AlarmFilter.ALL) }
     var reminderToDelete by remember { mutableStateOf<Reminder?>(null) }
@@ -85,6 +82,10 @@ fun HomeScreen(
     val timeFormat = remember { SimpleDateFormat("h:mm", Locale.getDefault()) }
     val periodFormat = remember { SimpleDateFormat("a", Locale.getDefault()) }
 
+    LaunchedEffect(viewModel) {
+        viewModel.synchronizeCloudReminders(context)
+    }
+
     if (reminderToDelete != null) {
         AlertDialog(
             onDismissRequest = { reminderToDelete = null },
@@ -109,14 +110,14 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = Canvas,
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddReminder,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("New alarm") },
-                containerColor = Ink,
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         }
     ) { innerPadding ->
@@ -144,15 +145,42 @@ fun HomeScreen(
                             "Your alarms",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Ink
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onLogout) {
                         Icon(
                             Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Sign out",
-                            tint = Ink
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                }
+            }
+
+            cloudSyncError?.let { message ->
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = message,
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            TextButton(
+                                onClick = { viewModel.synchronizeCloudReminders(context) }
+                            ) {
+                                Text("Retry")
+                            }
+                        }
                     }
                 }
             }
@@ -161,7 +189,8 @@ fun HomeScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = Ink)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -171,14 +200,14 @@ fun HomeScreen(
                         Text(
                             dateFormat.format(Date(now)).uppercase(Locale.getDefault()),
                             style = MaterialTheme.typography.labelMedium,
-                            color = Mint,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
                             text = nextReminder?.let { timeFormat.format(Date(it.timeInMillis)) } ?: "All clear",
                             style = MaterialTheme.typography.displaySmall,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -186,26 +215,29 @@ fun HomeScreen(
                                 "${periodFormat.format(Date(it.timeInMillis))}  ·  ${it.title}"
                             } ?: "Make a little room for what matters.",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.78f)
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f)
                         )
                         Spacer(Modifier.height(20.dp))
                         Row(
                             modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.10f),
+                                    RoundedCornerShape(16.dp)
+                                )
                                 .padding(horizontal = 14.dp, vertical = 11.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 Icons.Default.Notifications,
                                 contentDescription = null,
-                                tint = Mint,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(9.dp))
                             Text(
                                 "${activeReminders.size} active  ·  ${todayReminders.size} today",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -237,7 +269,7 @@ fun HomeScreen(
                     Text(
                         "Your schedule",
                         style = MaterialTheme.typography.titleLarge,
-                        color = Ink,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Row(
@@ -269,7 +301,7 @@ fun HomeScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Column(
                             modifier = Modifier
@@ -289,7 +321,7 @@ fun HomeScreen(
                                 else "Nothing on this list",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Ink
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 if (reminders.isEmpty()) "Create an alarm for a check-in, a deadline, or anything worth remembering."
@@ -330,7 +362,8 @@ private fun SummaryCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -365,7 +398,8 @@ private fun AlarmCard(
             .fillMaxWidth()
             .clickable(onClick = onEdit),
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 10.dp)) {
             Row(
@@ -375,13 +409,18 @@ private fun AlarmCard(
                 Box(
                     modifier = Modifier
                         .size(42.dp)
-                        .background(if (reminder.isActive) Mint.copy(alpha = 0.55f) else Canvas, CircleShape),
+                        .background(
+                            if (reminder.isActive) MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            CircleShape
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Notifications,
                         contentDescription = null,
-                        tint = if (reminder.isActive) Ink else MaterialTheme.colorScheme.outline
+                        tint = if (reminder.isActive) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline
                     )
                 }
                 Spacer(Modifier.width(12.dp))
@@ -390,7 +429,7 @@ private fun AlarmCard(
                         reminder.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = Ink
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         dateFormat.format(Date(reminder.timeInMillis)),

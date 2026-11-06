@@ -47,6 +47,52 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun testPhoneNumberIsNormalizedToE164() {
+        viewModel.requestOtp("+1", "(415) 555-2671", mockActivity())
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("+14155552671", fakeRepository.requestedPhoneNumber)
+    }
+
+    @Test
+    fun testPhoneAuthConfigurationErrorExplainsFirebaseSetup() {
+        fakeRepository.requestOtpFailure =
+            Exception("An internal error has occurred. [ CONFIGURATION_NOT_FOUND ]")
+
+        viewModel.requestOtp("+91", "9876543210", mockActivity())
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(
+            "Firebase Phone Authentication is not configured for this app. Enable the Phone provider, allow SMS to the user's country, add this app's SHA-1 and SHA-256 fingerprints in Firebase, and check that API-key restrictions allow notify-68514.firebaseapp.com.",
+            viewModel.errorMessage.value
+        )
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun testGoogleSignInSuccess() {
+        var successCalled = false
+        viewModel.signInWithGoogle(mockActivity()) { successCalled = true }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(successCalled)
+        assertEquals(AuthUiState.AuthSuccess, viewModel.uiState.value)
+        assertNull(viewModel.errorMessage.value)
+        assertFalse(viewModel.isLoading.value)
+    }
+
+    @Test
+    fun testGoogleSignInFailure() {
+        fakeRepository.shouldFailGoogleSignIn = true
+        viewModel.signInWithGoogle(mockActivity())
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertNotNull(viewModel.errorMessage.value)
+        assertFalse(viewModel.isLoading.value)
+        assertNotEquals(AuthUiState.AuthSuccess, viewModel.uiState.value)
+    }
+
+    @Test
     fun testInvalidOrEmptyOtpValidation() {
         // Without verificationId, verifyOtp fails
         viewModel.verifyOtp("123456", {})
@@ -57,6 +103,12 @@ class AuthViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.verifyOtp("123", {})
+        assertEquals("Please enter a valid 6-digit OTP.", viewModel.errorMessage.value)
+
+        viewModel.verifyOtp("12ab56", {})
+        assertEquals("Please enter a valid 6-digit OTP.", viewModel.errorMessage.value)
+
+        viewModel.verifyOtp("1234567", {})
         assertEquals("Please enter a valid 6-digit OTP.", viewModel.errorMessage.value)
     }
 
@@ -117,31 +169,6 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun testGoogleSignInSuccess() {
-        var successCalled = false
-        viewModel.signInWithGoogle(mockActivity()) {
-            successCalled = true
-        }
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertTrue(successCalled)
-        assertEquals(AuthUiState.AuthSuccess, viewModel.uiState.value)
-        assertNull(viewModel.errorMessage.value)
-        assertFalse(viewModel.isLoading.value)
-    }
-
-    @Test
-    fun testGoogleSignInFailure() {
-        fakeRepository.shouldFailGoogleSignIn = true
-        viewModel.signInWithGoogle(mockActivity())
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertNotNull(viewModel.errorMessage.value)
-        assertFalse(viewModel.isLoading.value)
-        assertNotEquals(AuthUiState.AuthSuccess, viewModel.uiState.value)
-    }
-
-    @Test
     fun testDuplicateCompletionProtection() {
         fakeRepository.triggerAutoVerification = true
         var callbackCount = 0
@@ -194,6 +221,8 @@ class FakeAuthRepository : AuthRepository {
     var shouldFailAutoVerification = false
     var shouldFailGoogleSignIn = false
     var triggerAutoVerification = false
+    var requestOtpFailure: Exception? = null
+    var requestedPhoneNumber: String? = null
     private val _isAuthenticated = MutableStateFlow(false)
 
     override val currentUser: FirebaseUser? = null
@@ -211,10 +240,9 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun signInWithCustomToken(token: String): Result<Boolean> = Result.success(true)
 
-    override suspend fun signInWithGoogle(activity: Activity): Result<Boolean> {
-        return if (shouldFailGoogleSignIn) Result.failure(Exception("Google Sign-In failed"))
+    override suspend fun signInWithGoogle(activity: Activity): Result<Boolean> =
+        if (shouldFailGoogleSignIn) Result.failure(Exception("Google Sign-In failed"))
         else Result.success(true)
-    }
 
     override suspend fun requestPhoneOtp(
         phoneNumber: String,
@@ -224,6 +252,11 @@ class FakeAuthRepository : AuthRepository {
         onVerificationFailed: (Exception) -> Unit,
         forceResendingToken: PhoneAuthProvider.ForceResendingToken?
     ) {
+        requestedPhoneNumber = phoneNumber
+        requestOtpFailure?.let {
+            onVerificationFailed(it)
+            return
+        }
         if (triggerAutoVerification) {
             if (shouldFailAutoVerification) {
                 onVerificationFailed(Exception("Auto-verification failed"))

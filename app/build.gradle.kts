@@ -2,7 +2,7 @@ plugins {
     id("com.google.gms.google-services")
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kapt)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.android)
 }
@@ -12,7 +12,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.androidreminderapp"
+        applicationId = "com.mynominee.notify"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -64,11 +64,11 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    kapt(libs.androidx.room.compiler)
 
     // Hilt
     implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
+    kapt(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.hilt.work)
     implementation("androidx.work:work-runtime-ktx:2.10.0")
@@ -76,8 +76,9 @@ dependencies {
     // Firebase & Auth
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
-    implementation("androidx.credentials:credentials:1.5.0-alpha04")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0-alpha04")
+    implementation(libs.firebase.firestore)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
 
     testImplementation(libs.junit)

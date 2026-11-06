@@ -60,7 +60,13 @@ class ReminderCrudTest {
     @Test
     fun testUpdateExistingReminder() = runTest {
         // Insert initial
-        val reminder = Reminder(id = 1L, title = "Meeting", startDate = System.currentTimeMillis(), timeInMillis = System.currentTimeMillis())
+        val reminder = Reminder(
+            id = 1L,
+            cloudId = "stable-cloud-id",
+            title = "Meeting",
+            startDate = System.currentTimeMillis(),
+            timeInMillis = System.currentTimeMillis()
+        )
         fakeRepository.insertReminder(reminder)
 
         viewModel.loadReminder(1L)
@@ -73,6 +79,7 @@ class ReminderCrudTest {
 
         val updated = fakeRepository.getReminderById(1L)
         assertEquals("Important Team Meeting", updated?.title)
+        assertEquals("stable-cloud-id", updated?.cloudId)
     }
 
     @Test
@@ -118,6 +125,8 @@ class FakeReminderRepository : ReminderRepository {
     override suspend fun getReminderById(id: Long): Reminder? = remindersMap[id]
 
     override suspend fun getActiveReminders(): List<Reminder> = remindersMap.values.filter { it.isActive }
+
+    override suspend fun synchronizeCloudReminders() = Unit
 
     override suspend fun insertReminder(reminder: Reminder): Long {
         val id = if (reminder.id == 0L) nextId++ else reminder.id

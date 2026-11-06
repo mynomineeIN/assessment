@@ -19,6 +19,8 @@ class AddEditReminderViewModel @Inject constructor(
 ) : ViewModel() {
 
     var reminderId: Long = 0L
+    var cloudId by mutableStateOf("")
+    var userId by mutableStateOf("")
     var title by mutableStateOf("")
     var description by mutableStateOf("")
     var startDate by mutableStateOf(System.currentTimeMillis())
@@ -39,6 +41,8 @@ class AddEditReminderViewModel @Inject constructor(
         reminderId = id
         viewModelScope.launch {
             reminderRepository.getReminderById(id)?.let { reminder ->
+                cloudId = reminder.cloudId
+                userId = reminder.userId
                 title = reminder.title
                 description = reminder.description ?: ""
                 startDate = reminder.startDate
@@ -80,6 +84,8 @@ class AddEditReminderViewModel @Inject constructor(
             try {
                 val reminder = Reminder(
                     id = reminderId,
+                    cloudId = cloudId.ifBlank { java.util.UUID.randomUUID().toString() },
+                    userId = userId,
                     title = title.trim(),
                     description = description.ifBlank { null },
                     startDate = startDate,

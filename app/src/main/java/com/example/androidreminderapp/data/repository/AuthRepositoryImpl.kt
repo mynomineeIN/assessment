@@ -12,10 +12,14 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) : AuthRepository {
 
     companion object {
@@ -46,6 +50,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             android.util.Log.d(TAG, "Firebase signInWithCredential started")
             firebaseAuth.signInWithCredential(credential).await()
+            firebaseAuth.currentUser?.let(::saveUserProfile)
             android.util.Log.d(TAG, "Firebase signInWithCredential succeeded")
             Result.success(true)
         } catch (e: Exception) {
@@ -57,6 +62,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun signInWithCustomToken(token: String): Result<Boolean> {
         return try {
             firebaseAuth.signInWithCustomToken(token).await()
+            firebaseAuth.currentUser?.let(::saveUserProfile)
             Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
@@ -65,36 +71,43 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signInWithGoogle(activity: android.app.Activity): Result<Boolean> {
         return try {
-            android.util.Log.d(TAG, "Credential Manager request started for Google Sign-In")
+            val webClientIdResource = activity.resources.getIdentifier(
+                "default_web_client_id",
+                "string",
+                activity.packageName
+            )
+            if (webClientIdResource == 0) {
+                return Result.failure(
+                    Exception("Google Sign-In is not configured. Add a Web OAuth client in Firebase.")
+                )
+            }
             val credentialManager = androidx.credentials.CredentialManager.create(activity)
-            val webClientId = activity.getString(com.example.androidreminderapp.R.string.default_web_client_id)
             val googleIdOption = com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
-                .setServerClientId(webClientId)
+                .setServerClientId(activity.getString(webClientIdResource))
                 .setAutoSelectEnabled(false)
                 .build()
-
             val request = androidx.credentials.GetCredentialRequest.Builder()
                 .addCredentialOption(googleIdOption)
                 .build()
-
-            val result = credentialManager.getCredential(activity, request)
-            val credential = result.credential
-            if (credential is androidx.credentials.CustomCredential &&
-                credential.type == com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            val credential = credentialManager.getCredential(activity, request).credential
+            if (credential !is androidx.credentials.CustomCredential ||
+                credential.type != com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
             ) {
-                android.util.Log.d(TAG, "Google credential received via Credential Manager")
-                val googleIdTokenCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
-                val firebaseCredential = com.google.firebase.auth.GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
-                firebaseAuth.signInWithCredential(firebaseCredential).await()
-                android.util.Log.d(TAG, "Firebase Google sign-in succeeded")
-                Result.success(true)
-            } else {
-                android.util.Log.e(TAG, "Invalid Google Credential type received")
-                Result.failure(Exception("Invalid Google Credential type"))
+                return Result.failure(Exception("Google Sign-In returned an unsupported credential."))
             }
+
+            val googleCredential =
+                com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
+            val firebaseCredential = com.google.firebase.auth.GoogleAuthProvider.getCredential(
+                googleCredential.idToken,
+                null
+            )
+            firebaseAuth.signInWithCredential(firebaseCredential).await()
+            firebaseAuth.currentUser?.let(::saveUserProfile)
+            Result.success(true)
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Google Sign-In failed: ${e.message}")
+            android.util.Log.e(TAG, "Google Sign-In failed", e)
             Result.failure(e)
         }
     }
@@ -119,6 +132,7 @@ class AuthRepositoryImpl @Inject constructor(
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
                                 firebaseAuth.signInWithCredential(credential).await()
+                                firebaseAuth.currentUser?.let(::saveUserProfile)
                                 android.util.Log.d(TAG, "Firebase auto-sign-in succeeded")
                                 withContext(Dispatchers.Main) {
                                     onAutoVerificationSuccess()
@@ -159,6 +173,7 @@ class AuthRepositoryImpl @Inject constructor(
             val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(verificationId, smsCode)
             android.util.Log.d(TAG, "OTP credential creation completed")
             firebaseAuth.signInWithCredential(credential).await()
+            firebaseAuth.currentUser?.let(::saveUserProfile)
             android.util.Log.d(TAG, "Firebase phone sign-in succeeded")
             Result.success(true)
         } catch (e: Exception) {
@@ -175,5 +190,26 @@ class AuthRepositoryImpl @Inject constructor(
             android.util.Log.e(TAG, "Logout failed: ${e.message}")
             throw e
         }
+    }
+
+    private fun saveUserProfile(user: FirebaseUser) {
+        val profile = mapOf(
+            "uid" to user.uid,
+            "phoneNumber" to user.phoneNumber,
+            "displayName" to user.displayName,
+            "email" to user.email,
+            "photoUrl" to user.photoUrl?.toString(),
+            "provider" to user.providerData
+                .firstOrNull { it.providerId != "firebase" }
+                ?.providerId,
+            "createdAt" to (user.metadata?.creationTimestamp ?: System.currentTimeMillis()),
+            "lastSignInAt" to FieldValue.serverTimestamp()
+        )
+        firestore.collection("users")
+            .document(user.uid)
+            .set(profile, SetOptions.merge())
+            .addOnFailureListener { error ->
+                android.util.Log.e(TAG, "Failed to save authenticated user profile to Firestore", error)
+            }
     }
 }

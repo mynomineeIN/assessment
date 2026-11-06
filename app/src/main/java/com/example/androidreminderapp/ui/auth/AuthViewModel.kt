@@ -14,7 +14,6 @@ import javax.inject.Inject
 
 sealed interface AuthUiState {
     object Welcome : AuthUiState
-    object SignUp : AuthUiState
     object PhoneInput : AuthUiState
     data class OtpVerification(val maskedPhone: String) : AuthUiState
     object AuthSuccess : AuthUiState
@@ -85,15 +84,21 @@ class AuthViewModel @Inject constructor(
         _errorMessage.value = null
     }
 
+    fun setError(message: String) {
+        _errorMessage.value = message
+    }
+
     fun requestOtp(countryCode: String, fullPhoneNumber: String, activity: Activity, onLoginSuccess: (() -> Unit)? = null) {
         if (isAuthCompleted) return
-        if (fullPhoneNumber.isBlank() || fullPhoneNumber.length < 10) {
+        val countryDigits = countryCode.filter(Char::isDigit)
+        val phoneDigits = fullPhoneNumber.filter(Char::isDigit)
+        if (countryDigits.isEmpty() || countryDigits.length > 3 || phoneDigits.length !in 10..15) {
             _errorMessage.value = "Please enter a valid mobile number (at least 10 digits)."
             return
         }
-        storedCountryCode = countryCode
-        storedPhoneNumber = fullPhoneNumber
-        val formattedNumber = "$countryCode$fullPhoneNumber"
+        storedCountryCode = "+$countryDigits"
+        storedPhoneNumber = phoneDigits
+        val formattedNumber = "$storedCountryCode$phoneDigits"
         _isLoading.value = true
         _errorMessage.value = null
 
@@ -107,7 +112,7 @@ class AuthViewModel @Inject constructor(
                             verificationId = vId
                             resendToken = token
                             _isLoading.value = false
-                            _uiState.value = AuthUiState.OtpVerification(maskedPhone = "$countryCode *****${fullPhoneNumber.takeLast(4)}")
+                            _uiState.value = AuthUiState.OtpVerification(maskedPhone = "$storedCountryCode *****${phoneDigits.takeLast(4)}")
                         }
                     },
                     onAutoVerificationSuccess = {
@@ -122,7 +127,7 @@ class AuthViewModel @Inject constructor(
                     onVerificationFailed = { e ->
                         if (!isAuthCompleted) {
                             _isLoading.value = false
-                            _errorMessage.value = e.localizedMessage ?: "Phone verification failed."
+                            _errorMessage.value = phoneAuthErrorMessage(e, "Phone verification failed.")
                         }
                     },
                     forceResendingToken = resendToken
@@ -130,15 +135,15 @@ class AuthViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (!isAuthCompleted) {
                     _isLoading.value = false
-                    _errorMessage.value = e.localizedMessage ?: "Failed to send OTP."
+                    _errorMessage.value = phoneAuthErrorMessage(e, "Failed to send OTP.")
                 }
             }
         }
     }
 
-    fun verifyOtp(smsCode: String, onSuccess: () -> Unit) {
+    fun verifyOtp(smsCode: String, onSuccess: () -> Unit = {}) {
         if (isAuthCompleted) return
-        if (smsCode.length < 6) {
+        if (smsCode.length != 6 || !smsCode.all(Char::isDigit)) {
             _errorMessage.value = "Please enter a valid 6-digit OTP."
             return
         }
@@ -162,11 +167,19 @@ class AuthViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     if (!isAuthCompleted) {
-                        _errorMessage.value = e.localizedMessage ?: "Invalid verification code."
+                        _errorMessage.value = phoneAuthErrorMessage(e, "Invalid verification code.")
                     }
                 }
             )
         }
+    }
+
+    private fun phoneAuthErrorMessage(error: Throwable, fallback: String): String {
+        val details = "${error.message.orEmpty()} ${error.localizedMessage.orEmpty()}"
+        if (details.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true)) {
+            return "Firebase Phone Authentication is not configured for this app. Enable the Phone provider, allow SMS to the user's country, add this app's SHA-1 and SHA-256 fingerprints in Firebase, and check that API-key restrictions allow notify-68514.firebaseapp.com."
+        }
+        return error.localizedMessage ?: fallback
     }
 
     fun signInWithGoogle(activity: Activity, onLoginSuccess: (() -> Unit)? = null) {
@@ -185,9 +198,9 @@ class AuthViewModel @Inject constructor(
                         onLoginSuccess?.invoke()
                     }
                 },
-                onFailure = { e ->
+                onFailure = { error ->
                     if (!isAuthCompleted) {
-                        _errorMessage.value = e.localizedMessage ?: "Google Sign-In failed."
+                        _errorMessage.value = error.localizedMessage ?: "Google Sign-In failed."
                     }
                 }
             )

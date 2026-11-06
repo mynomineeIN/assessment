@@ -3,6 +3,7 @@ package com.example.androidreminderapp.di
 import com.example.androidreminderapp.data.repository.AuthRepositoryImpl
 import com.example.androidreminderapp.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -25,6 +26,12 @@ abstract class AuthModule {
         @Singleton
         fun provideFirebaseAuth(): FirebaseAuth {
             return FirebaseAuth.getInstance()
+        }
+
+        @Provides
+        @Singleton
+        fun provideFirebaseFirestore(): FirebaseFirestore {
+            return FirebaseFirestore.getInstance()
         }
     }
 }

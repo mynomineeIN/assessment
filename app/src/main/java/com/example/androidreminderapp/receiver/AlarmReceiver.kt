@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.androidreminderapp.data.local.ReminderDao
+import com.example.androidreminderapp.data.repository.ReminderCloudStore
 import com.example.androidreminderapp.domain.util.RecurrenceCalculator
 import com.example.androidreminderapp.service.AlarmScheduler
 import com.example.androidreminderapp.service.NotificationHelper
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -21,6 +23,8 @@ import kotlinx.coroutines.launch
 @InstallIn(SingletonComponent::class)
 interface ReminderDaoEntryPoint {
     fun reminderDao(): ReminderDao
+    fun firebaseAuth(): FirebaseAuth
+    fun reminderCloudStore(): ReminderCloudStore
 }
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -44,8 +48,9 @@ class AlarmReceiver : BroadcastReceiver() {
                     ReminderDaoEntryPoint::class.java
                 )
                 val reminderDao = entryPoint.reminderDao()
+                val userId = entryPoint.firebaseAuth().currentUser?.uid ?: return@launch
                 val entity = reminderDao.getReminderById(reminderId)
-                if (entity != null) {
+                if (entity != null && entity.userId == userId) {
                     val reminder = entity.toDomain()
                     val now = System.currentTimeMillis()
 
@@ -73,6 +78,9 @@ class AlarmReceiver : BroadcastReceiver() {
                                     nextTrigger = nextTrigger
                                 )
                                 if (rows > 0) {
+                                    reminderDao.getReminderById(reminderId)?.let {
+                                        entryPoint.reminderCloudStore().save(userId, it)
+                                    }
                                     NotificationHelper.showReminderNotification(context, reminder.id, reminder.title, reminder.description)
                                     val updated = reminder.copy(timeInMillis = nextTrigger)
                                     val scheduled = AlarmScheduler.scheduleAlarm(context, updated, nextTrigger)
@@ -86,6 +94,9 @@ class AlarmReceiver : BroadcastReceiver() {
                                     expectedTrigger = reminder.timeInMillis
                                 )
                                 if (rows > 0) {
+                                    reminderDao.getReminderById(reminderId)?.let {
+                                        entryPoint.reminderCloudStore().save(userId, it)
+                                    }
                                     NotificationHelper.showReminderNotification(context, reminder.id, reminder.title, reminder.description)
                                 }
                             }
@@ -95,6 +106,9 @@ class AlarmReceiver : BroadcastReceiver() {
                                 expectedTrigger = reminder.timeInMillis
                             )
                             if (rows > 0) {
+                                reminderDao.getReminderById(reminderId)?.let {
+                                    entryPoint.reminderCloudStore().save(userId, it)
+                                }
                                 NotificationHelper.showReminderNotification(context, reminder.id, reminder.title, reminder.description)
                             }
                         }
